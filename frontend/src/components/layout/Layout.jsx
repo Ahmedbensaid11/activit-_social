@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import logoTT from '../../assets/tt.png' 
+import { ShieldCheck } from 'lucide-react'
 
 export default function Layout() {
   const location = useLocation()
@@ -74,6 +75,7 @@ export default function Layout() {
     { labelKey: 'qr_scanner',            path: '/admin/qr-scanner',      Icon: QrCode,      group: 'Outils' },
     { labelKey: 'reports',               path: '/admin/reports',         Icon: FileText,    group: 'Administration' },
     { labelKey: 'audit_log',             path: '/admin/audit',           Icon: ShieldAlert, group: 'Administration' },
+     { labelKey: 'manage_roles', path: '/admin/roles', Icon: ShieldCheck, group: 'Administration' },
   ]
 
   const fullName = `${prenom || ''} ${nom || ''}`.trim()

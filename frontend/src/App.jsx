@@ -23,6 +23,7 @@ import Profile from './pages/Profile'
 import NotificationBell from './components/ui/NotificationBell'
 import Layout from './components/layout/Layout'
 import { authStore } from './stores/authStore'
+import RolesAdmin from './pages/RolesAdmin'
 
 const RootRedirect = () => {
   const role = authStore((state) => state.user?.role)
@@ -59,7 +60,7 @@ function App() {
         }>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/dashboard" element={<DashboardRedirect />} />
-          
+          <Route path="/admin/roles" element={<RolesAdmin />} />
           <Route path="/admin/activity-types" element={<ActivityTypesAdmin />} />
           <Route path="/admin/activities" element={<ActivitiesAdmin />} />
           
