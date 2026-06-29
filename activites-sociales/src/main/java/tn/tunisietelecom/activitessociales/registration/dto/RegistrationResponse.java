@@ -23,6 +23,7 @@ public class RegistrationResponse {
     private String motifRejet;
     private String qrCodePath;
     private Map<String, Object> extraData;
+    private Integer seatCount;
     private LocalDateTime registeredAt;
     private LocalDateTime updatedAt;
     private LocalDateTime validatedAt;

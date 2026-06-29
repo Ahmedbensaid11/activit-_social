@@ -19,7 +19,6 @@ import tn.tunisietelecom.activitessociales.auth.repository.UserRepository;
 import tn.tunisietelecom.activitessociales.common.exception.*;
 import tn.tunisietelecom.activitessociales.auth.service.EmailService;
 import tn.tunisietelecom.activitessociales.registration.dto.*;
-
 import tn.tunisietelecom.activitessociales.registration.entity.Registration;
 import tn.tunisietelecom.activitessociales.registration.repository.RegistrationRepository;
 
@@ -41,6 +40,23 @@ public class RegistrationService {
     private final EmailService     emailService;
     private final tn.tunisietelecom.activitessociales.notification.service.NotificationService notificationService;
 
+    // ── Public: seats remaining ───────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAvailableSeats(Long activityId) {
+        Activity activity = getActivity(activityId);
+        long reserved = registrationRepository.sumReservedSeats(activityId);
+        Integer cap = activity.getCapacityMax();
+        long available = cap == null ? -1L : Math.max(0, cap - reserved);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("capacityMax", cap);
+        result.put("reservedSeats", reserved);
+        result.put("availableSeats", available);
+        result.put("unlimited", cap == null);
+        return result;
+    }
+
+    // ── Register ──────────────────────────────────────────────────────────
 
     @Transactional
     @tn.tunisietelecom.activitessociales.audit.annotation.Auditable(action = "REGISTRATION_CREATE")
@@ -48,21 +64,27 @@ public class RegistrationService {
         User user = getUser(email);
         Activity activity = getActivity(activityId);
 
-        validateCanRegister(user, activity);
+        int seats = (request != null && request.getSeatCount() != null && request.getSeatCount() > 0)
+                ? request.getSeatCount() : 1;
+
+        validateCanRegister(user, activity, seats);
 
         Registration registration = Registration.builder()
                 .user(user)
                 .activity(activity)
                 .status(Registration.RegistrationStatus.PENDING)
                 .registeredAt(LocalDateTime.now())
+                .seatCount(seats)
                 .extraData(writeExtraData(request == null ? null : request.getExtraData()))
                 .build();
 
         Registration saved = registrationRepository.save(registration);
         auditService.log("REGISTRATION_CREATED", "Registration", saved.getId(), email, null,
-                "Inscription creee pour activite " + activity.getId());
+                "Inscription creee pour activite " + activity.getId() + " (" + seats + " place(s))");
         return toResponse(saved);
     }
+
+    // ── Cancel ────────────────────────────────────────────────────────────
 
     @Transactional
     @tn.tunisietelecom.activitessociales.audit.annotation.Auditable(action = "REGISTRATION_CANCEL")
@@ -124,7 +146,7 @@ public class RegistrationService {
         if (registration.getStatus() != Registration.RegistrationStatus.PENDING) {
             throw new BadRequestException("Seules les inscriptions en attente peuvent etre approuvees.");
         }
-        ensureCapacityForApprove(registration.getActivity());
+        ensureCapacityForApprove(registration.getActivity(), registration.getSeatCount());
 
         registration.setStatus(Registration.RegistrationStatus.APPROVED);
         registration.setMotifRejet(null);
@@ -240,6 +262,8 @@ public class RegistrationService {
         return ticketService.generateTicket(registration);
     }
 
+    // ── Helpers ───────────────────────────────────────────────────────────
+
     private Registration getOwnedOrAdminRegistration(Long id, String email) {
         User user = getUser(email);
         Registration registration = getRegistration(id);
@@ -249,7 +273,7 @@ public class RegistrationService {
         return registration;
     }
 
-    private void validateCanRegister(User user, Activity activity) {
+    private void validateCanRegister(User user, Activity activity, int seats) {
         if (activity.getStatus() != Activity.ActivityStatus.OPEN) {
             throw new BadRequestException("Cette activite n'est pas ouverte aux inscriptions.");
         }
@@ -259,26 +283,29 @@ public class RegistrationService {
         if (registrationRepository.existsByUserIdAndActivityId(user.getId(), activity.getId())) {
             throw new BadRequestException("Vous etes deja inscrit a cette activite.");
         }
-        ensureCapacityForApply(activity);
+        if (seats < 1) {
+            throw new BadRequestException("Le nombre de places doit etre au moins 1.");
+        }
+        ensureCapacityForApply(activity, seats);
     }
 
-    private void ensureCapacityForApply(Activity activity) {
-        if (activity.getCapacityMax() == null) {
-            return;
-        }
-        long approvedCount = registrationRepository.countByActivityIdAndStatus(activity.getId(), Registration.RegistrationStatus.APPROVED);
-        long pendingCount = registrationRepository.countByActivityIdAndStatus(activity.getId(), Registration.RegistrationStatus.PENDING);
-        if (approvedCount + pendingCount >= activity.getCapacityMax()) {
-            throw new BadRequestException("Capacite maximale atteinte.");
+    private void ensureCapacityForApply(Activity activity, int requestedSeats) {
+        if (activity.getCapacityMax() == null) return;
+        long reserved = registrationRepository.sumReservedSeats(activity.getId());
+        if (reserved + requestedSeats > activity.getCapacityMax()) {
+            long available = Math.max(0, activity.getCapacityMax() - reserved);
+            throw new BadRequestException(
+                    available == 0
+                            ? "Capacite maximale atteinte. Aucune place disponible."
+                            : "Seulement " + available + " place(s) disponible(s). Vous ne pouvez pas reserver " + requestedSeats + " place(s)."
+            );
         }
     }
 
-    private void ensureCapacityForApprove(Activity activity) {
-        if (activity.getCapacityMax() == null) {
-            return;
-        }
-        long approvedCount = registrationRepository.countByActivityIdAndStatus(activity.getId(), Registration.RegistrationStatus.APPROVED);
-        if (approvedCount >= activity.getCapacityMax()) {
+    private void ensureCapacityForApprove(Activity activity, int seatCount) {
+        if (activity.getCapacityMax() == null) return;
+        long approvedSeats = registrationRepository.sumSeatsByActivityIdAndStatus(activity.getId(), Registration.RegistrationStatus.APPROVED);
+        if (approvedSeats + seatCount > activity.getCapacityMax()) {
             throw new BadRequestException("Capacite maximale de l'activite deja atteinte par les inscriptions approuvees.");
         }
     }
@@ -315,9 +342,7 @@ public class RegistrationService {
     }
 
     private String normalizeSearch(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return null;
-        }
+        if (value == null || value.trim().isEmpty()) return null;
         return value.trim();
     }
 
@@ -365,6 +390,7 @@ public class RegistrationService {
                 .motifRejet(registration.getMotifRejet())
                 .qrCodePath(registration.getQrCodePath())
                 .extraData(readExtraData(registration.getExtraData()))
+                .seatCount(registration.getSeatCount())
                 .registeredAt(registration.getRegisteredAt())
                 .updatedAt(registration.getUpdatedAt())
                 .validatedAt(registration.getValidatedAt())

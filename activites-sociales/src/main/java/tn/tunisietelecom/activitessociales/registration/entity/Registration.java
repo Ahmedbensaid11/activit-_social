@@ -49,6 +49,13 @@ public class Registration {
     @Builder.Default
     private String extraData = "{}";
 
+    /**
+     * Number of seats reserved (1 = employee only, >1 = employee + family members).
+     */
+    @Column(name = "seat_count", nullable = false)
+    @Builder.Default
+    private Integer seatCount = 1;
+
     @Column(name = "registered_at", nullable = false)
     private LocalDateTime registeredAt;
 

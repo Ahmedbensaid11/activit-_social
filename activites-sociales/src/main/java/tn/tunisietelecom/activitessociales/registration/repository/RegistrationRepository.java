@@ -24,7 +24,19 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     Page<Registration> findByActivityId(Long activityId, Pageable pageable);
     Page<Registration> findByStatus(Registration.RegistrationStatus status, Pageable pageable);
     Page<Registration> findByActivityIdAndStatus(Long activityId, Registration.RegistrationStatus status, Pageable pageable);
-    long countByActivityIdAndStatus(Long activityId, Registration.RegistrationStatus status);
+
+    /**
+     * Sum of seat_count for a given activity + status (replaces simple count).
+     * This correctly handles family groups taking multiple seats.
+     */
+    @Query("select coalesce(sum(r.seatCount), 0) from Registration r where r.activity.id = :activityId and r.status = :status")
+    long sumSeatsByActivityIdAndStatus(@Param("activityId") Long activityId, @Param("status") Registration.RegistrationStatus status);
+
+    /**
+     * Number of seats already approved — used for the "places restantes" display.
+     */
+    @Query("select coalesce(sum(r.seatCount), 0) from Registration r where r.activity.id = :activityId and r.status <> 'REJECTED'")
+    long sumReservedSeats(@Param("activityId") Long activityId);
 
     @Query("""
             select r from Registration r
