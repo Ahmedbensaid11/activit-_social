@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="page (heading, subtitle, content)" lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title th:text="${heading}">Tunisie Telecom</title>
+  <style>
+    body { margin: 0; padding: 0; background: #eef2f7; font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; }
+    .outer { width: 100%; background: #eef2f7; padding: 32px 16px; }
+    .wrapper { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08); }
+    .header { background: linear-gradient(135deg, #005bab 0%, #0066cc 45%, #1d4ed8 100%); padding: 28px 32px 24px; text-align: center; }
+    .logo-wrap { display: inline-block; background: #ffffff; border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); }
+    .logo { display: block; width: auto; height: 48px; max-width: 140px; }
+    .header-title { color: #ffffff; font-size: 22px; font-weight: 700; margin: 0; letter-spacing: 0.2px; }
+    .header-subtitle { color: rgba(255, 255, 255, 0.88); font-size: 13px; margin: 8px 0 0; }
+    .body { padding: 32px; line-height: 1.65; font-size: 15px; color: #334155; }
+    .greeting { font-size: 16px; margin: 0 0 18px; color: #0f172a; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin: 18px 0; }
+    .card p { margin: 6px 0; font-size: 14px; color: #475569; }
+    .card strong { color: #0f172a; }
+    .badge { display: inline-block; padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700; margin: 8px 0 16px; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-danger { background: #fee2e2; color: #b91c1c; }
+    .badge-info { background: #dbeafe; color: #1d4ed8; }
+    .reason-box { background: #fff7ed; border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 18px; margin: 16px 0; }
+    .reason-box p { margin: 0; font-size: 14px; color: #92400e; }
+    .note { font-size: 13px; color: #64748b; margin-top: 16px; }
+    .btn { display: inline-block; margin: 18px 0 8px; padding: 13px 24px; background: #0066cc; color: #ffffff !important; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; }
+    .btn-danger { background: #dc2626; }
+    .footer { background: #f8fafc; padding: 22px 32px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .footer p { font-size: 12px; color: #94a3b8; margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <div class="outer">
+    <div class="wrapper">
+      <div class="header">
+        <div class="logo-wrap">
+          <img th:src="${logoUrl}" src="https://upload.wikimedia.org/wikipedia/fr/f/f9/LOGO_TT_.jpg" alt="Tunisie Telecom" class="logo"/>
+        </div>
+        <h1 class="header-title" th:text="${heading}">Tunisie Telecom</h1>
+        <p class="header-subtitle" th:if="${subtitle != null and !#strings.isEmpty(subtitle)}" th:text="${subtitle}">
+          Gestion des Activités Sociales
+        </p>
+      </div>
+      <div class="body">
+        <th:block th:replace="${content}">Contenu</th:block>
+      </div>
+      <div class="footer">
+        <p>© <span th:text="${year}">2026</span> Tunisie Telecom — Gestion des Activités Sociales</p>
+        <p>Direction Régionale Nabeul — Message automatique, merci de ne pas répondre.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

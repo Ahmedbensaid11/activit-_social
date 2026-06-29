@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/layout :: page(${titre}, 'Annonce interne', ~{::section})}">
+<body>
+<section th:fragment="section">
+  <p class="greeting">Bonjour <strong th:text="${name}">Employé</strong>,</p>
+  <span class="badge badge-info">Annonce</span>
+  <div class="card">
+    <p><strong th:text="${titre}">Titre de l'annonce</strong></p>
+    <p th:text="${message}">Message de l'annonce...</p>
+  </div>
+  <p class="note">Vous recevez cette notification en tant qu'employé actif du portail Activités Sociales de Tunisie Telecom.</p>
+  <a th:href="${portalUrl}" class="btn">Accéder au portail</a>
+</section>
+</body>
+</html>

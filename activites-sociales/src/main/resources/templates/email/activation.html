@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/layout :: page('Activation de compte', 'Portail Activités Sociales', ~{::section})}">
+<body>
+<section th:fragment="section">
+  <p class="greeting">Bonjour <strong th:text="${name}">Prénom Nom</strong>,</p>
+  <p>Votre compte pour le portail <strong>Gestion des Activités Sociales</strong> a été créé avec succès.</p>
+  <p>Cliquez sur le bouton ci-dessous pour activer votre compte :</p>
+  <a th:href="${activationUrl}" class="btn">Activer mon compte</a>
+  <p class="note">Ce lien est valable pendant <strong>24 heures</strong>. Si vous n'avez pas créé de compte, ignorez cet email.</p>
+</section>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/layout :: page('Mise à jour de votre inscription', 'Activités Sociales', ~{::section})}">
+<body>
+<section th:fragment="section">
+  <p class="greeting">Bonjour <strong th:text="${name}">Prénom Nom</strong>,</p>
+  <p>Votre demande d'inscription concernant l'activité <strong th:text="${activityTitle}">Activité</strong> a été traitée.</p>
+
+  <div th:if="${status == 'APPROVED'}">
+    <span class="badge badge-success">Inscription approuvée</span>
+    <div class="card">
+      <p><strong>Activité :</strong> <span th:text="${activityTitle}">Titre</span></p>
+      <p th:if="${hasTicket}">Votre <strong>ticket d'inscription</strong> (avec QR Code) est joint à cet email en pièce jointe PNG.</p>
+      <p>Présentez ce ticket lors de la validation de votre présence à l'événement.</p>
+    </div>
+    <a th:href="${portalUrl + '/my-registrations'}" class="btn">Voir mes inscriptions</a>
+  </div>
+
+  <div th:if="${status == 'REJECTED'}">
+    <span class="badge badge-danger">Inscription rejetée</span>
+    <div class="card">
+      <p><strong>Activité :</strong> <span th:text="${activityTitle}">Titre</span></p>
+    </div>
+    <div class="reason-box" th:if="${reason != null and !#strings.isEmpty(reason)}">
+      <p><strong>Motif du rejet :</strong> <span th:text="${reason}">Motif</span></p>
+    </div>
+    <p class="note">Pour toute question, contactez votre administrateur RH ou le service Activités Sociales.</p>
+    <a th:href="${portalUrl + '/activities'}" class="btn">Parcourir le catalogue</a>
+  </div>
+</section>
+</body>
+</html>

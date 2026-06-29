@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/layout :: page('Demande de ticket Pluxee', 'Tickets &amp; Avantages', ~{::section})}">
+<body>
+<section th:fragment="section">
+  <p class="greeting">Bonjour <strong th:text="${name}">Employé</strong>,</p>
+  <p>Votre demande de ticket Pluxee a été traitée. Voici le résultat :</p>
+
+  <div th:if="${status == 'APPROVED'}">
+    <span class="badge badge-success">Demande approuvée</span>
+    <div class="card">
+      <p><strong>Ticket :</strong> <span th:text="${ticketNom}">RESTAURANT - Juin 2026</span></p>
+      <p>Votre demande a été validée. Votre carte Pluxee sera rechargée lors du prochain cycle mensuel automatique.</p>
+    </div>
+    <a th:href="${portalUrl + '/tickets/my-tickets'}" class="btn">Voir mes tickets</a>
+  </div>
+
+  <div th:if="${status == 'REJECTED'}">
+    <span class="badge badge-danger">Demande rejetée</span>
+    <div class="card">
+      <p><strong>Ticket :</strong> <span th:text="${ticketNom}">RESTAURANT - Juin 2026</span></p>
+    </div>
+    <div class="reason-box" th:if="${reason != null and !#strings.isEmpty(reason)}">
+      <p><strong>Motif du rejet :</strong> <span th:text="${reason}">Informations incomplètes.</span></p>
+    </div>
+    <p class="note">Si vous pensez qu'il s'agit d'une erreur, contactez votre administrateur RH.</p>
+    <a th:href="${portalUrl + '/tickets/submit'}" class="btn">Nouvelle demande</a>
+  </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: tt_postgres
+    environment:
+      POSTGRES_DB: activites_sociales
+      POSTGRES_USER: tt_user
+      POSTGRES_PASSWORD: tt_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tt_user -d activites_sociales"]
+      interval: 10s
+      retries: 5
+
+  mongodb:
+    image: mongo:7
+    container_name: tt_mongodb
+    environment:
+      MONGO_INITDB_DATABASE: audit_logs
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: always
+
+volumes:
+  postgres_data:
+  mongo_data:

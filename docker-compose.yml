@@ -1,0 +1,90 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: tt_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: activites_sociales
+      POSTGRES_USER: ${DB_USERNAME:-tt_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-tt_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-tt_user} -d activites_sociales"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tt_network
+
+  mongo:
+    image: mongo:7
+    container_name: tt_mongo
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: audit_logs
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tt_network
+
+  app:
+    build:
+      context: ./activites-sociales
+      dockerfile: Dockerfile
+    container_name: tt_app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/activites_sociales
+      DB_USERNAME: ${DB_USERNAME:-tt_user}
+      DB_PASSWORD: ${DB_PASSWORD:-tt_password}
+      MONGO_URI: mongodb://mongo:27017/audit_logs
+      JWT_SECRET: ${JWT_SECRET}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER}
+      MAIL_PASS: ${MAIL_PASS}
+      UPLOAD_PATH: /uploads/
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:80}
+    volumes:
+      - uploads_data:/uploads
+    networks:
+      - tt_network
+    expose:
+      - "9090"
+
+  nginx:
+    image: nginx:alpine
+    container_name: tt_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - tt_network
+
+volumes:
+  postgres_data:
+    name: tt_postgres_data
+  mongo_data:
+    name: tt_mongo_data
+  uploads_data:
+    name: tt_uploads_data
+
+networks:
+  tt_network:
+    driver: bridge
