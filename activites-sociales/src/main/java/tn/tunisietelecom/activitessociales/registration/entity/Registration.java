@@ -51,8 +51,9 @@ public class Registration {
 
     /**
      * Number of seats reserved (1 = employee only, >1 = employee + family members).
+     * columnDefinition ensures PostgreSQL adds "DEFAULT 1" so existing rows are backfilled.
      */
-    @Column(name = "seat_count", nullable = false)
+    @Column(name = "seat_count", nullable = false, columnDefinition = "integer default 1")
     @Builder.Default
     private Integer seatCount = 1;
 

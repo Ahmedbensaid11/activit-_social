@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Users } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Users, UserPlus } from 'lucide-react'
 import { activitiesApi } from '../api/activities'
 import { registrationsApi } from '../api/registrations'
 import { Badge } from '../components/ui/badge'
@@ -15,23 +15,33 @@ const formatDate = (value) => {
 export default function ActivityDetail() {
   const { id } = useParams()
   const [activity, setActivity] = useState(null)
+  const [seats, setSeats] = useState(null) // { capacityMax, reservedSeats, availableSeats, unlimited }
   const [loading, setLoading] = useState(true)
   const [registering, setRegistering] = useState(false)
   const [activePhotoIndex, setActivePhotoIndex] = useState(0)
+  const [seatCount, setSeatCount] = useState(1)
+
+  const loadActivity = async () => {
+    setLoading(true)
+    try {
+      const data = await activitiesApi.get(id)
+      setActivity(data)
+      // Fetch available seats separately
+      try {
+        const seatsData = await registrationsApi.availableSeats(id)
+        setSeats(seatsData)
+      } catch {
+        // fallback: no seats info
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Activite introuvable')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      try {
-        setActivity(await activitiesApi.get(id))
-      } catch (error) {
-        toast.error(error.response?.data?.message || 'Activite introuvable')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    load()
+    loadActivity()
   }, [id])
 
   const photos = useMemo(() => {
@@ -59,17 +69,48 @@ export default function ActivityDetail() {
 
   const activePhoto = photos[activePhotoIndex]
 
+  // Determine seats display
+  const isUnlimited = seats?.unlimited === true
+  const availableSeats = seats?.availableSeats ?? null
+  const isFull = !isUnlimited && availableSeats !== null && availableSeats === 0
+  const isOpen = activity.status === 'OPEN'
+  const canRegister = isOpen && !isFull
+  const maxSeatsAllowed = isUnlimited
+    ? 10
+    : Math.min(availableSeats ?? 1, 10)
+
   const register = async () => {
+    if (seatCount < 1) {
+      toast.error('Veuillez indiquer au moins 1 place.')
+      return
+    }
+    if (!isUnlimited && availableSeats !== null && seatCount > availableSeats) {
+      toast.error(`Seulement ${availableSeats} place(s) disponible(s).`)
+      return
+    }
     setRegistering(true)
     try {
-      await registrationsApi.register(activity.id)
+      await registrationsApi.register(activity.id, {}, seatCount)
       toast.success('Inscription envoyee. Statut: en attente.')
+      // Refresh seats after registration
+      try {
+        const seatsData = await registrationsApi.availableSeats(id)
+        setSeats(seatsData)
+      } catch { /* ignore */ }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Inscription impossible')
     } finally {
       setRegistering(false)
     }
   }
+
+  const seatsLabel = isUnlimited
+    ? 'Places illimitées'
+    : availableSeats !== null
+      ? `${availableSeats} place(s) disponible(s) sur ${seats?.capacityMax ?? '?'}`
+      : activity.capacityMax
+        ? `${activity.capacityMax} places max`
+        : 'Places non limitées'
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -130,17 +171,89 @@ export default function ActivityDetail() {
               )}
             </div>
 
-            <aside className="rounded-lg border bg-slate-50 p-4">
+            <aside className="rounded-lg border bg-slate-50 p-4 space-y-4">
               <div className="grid gap-3 text-sm text-slate-700">
-                <span className="flex gap-2"><CalendarDays className="size-4 text-blue-700" />Debut: {formatDate(activity.startsAt)}</span>
-                <span className="flex gap-2"><CalendarDays className="size-4 text-blue-700" />Fin: {formatDate(activity.endsAt)}</span>
-                <span className="flex gap-2"><MapPin className="size-4 text-blue-700" />{activity.location || 'Lieu a definir'}</span>
-                <span className="flex gap-2"><Users className="size-4 text-blue-700" />{activity.capacityMax || '-'} places restantes</span>
+                <span className="flex gap-2"><CalendarDays className="size-4 text-blue-700 shrink-0" />Debut: {formatDate(activity.startsAt)}</span>
+                <span className="flex gap-2"><CalendarDays className="size-4 text-blue-700 shrink-0" />Fin: {formatDate(activity.endsAt)}</span>
+                <span className="flex gap-2"><MapPin className="size-4 text-blue-700 shrink-0" />{activity.location || 'Lieu a definir'}</span>
+
+                {/* Real-time seats display */}
+                <div className="flex items-start gap-2">
+                  <Users className="size-4 text-blue-700 shrink-0 mt-0.5" />
+                  <div>
+                    <span className={`font-semibold ${isFull ? 'text-red-600' : 'text-slate-700'}`}>
+                      {seatsLabel}
+                    </span>
+                    {!isUnlimited && seats && (
+                      <div className="mt-1 w-full bg-slate-200 rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full transition-all ${isFull ? 'bg-red-500' : 'bg-blue-600'}`}
+                          style={{
+                            width: `${Math.min(100, ((seats.reservedSeats ?? 0) / (seats.capacityMax ?? 1)) * 100)}%`
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <Button className="mt-5 w-full" disabled={activity.status !== 'OPEN' || registering} onClick={register}>
-                {registering ? 'Inscription...' : "S'inscrire"}
+
+              {/* Seat count selector */}
+              {isOpen && !isFull && (
+                <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <UserPlus className="size-4 text-blue-600" />
+                    Nombre de places
+                  </label>
+                  <p className="text-xs text-slate-500">
+                    Vous + membres de votre famille. Chaque place compte dans la capacité totale.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSeatCount(Math.max(1, seatCount - 1))}
+                      className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 font-bold transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="w-10 text-center text-lg font-bold text-slate-900">{seatCount}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSeatCount(Math.min(maxSeatsAllowed, seatCount + 1))}
+                      className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 font-bold transition-colors"
+                      disabled={seatCount >= maxSeatsAllowed}
+                    >
+                      +
+                    </button>
+                    {maxSeatsAllowed > 1 && (
+                      <span className="text-xs text-slate-400">max {maxSeatsAllowed}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {isFull && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700 font-medium">
+                  Capacité maximale atteinte — inscriptions fermées.
+                </div>
+              )}
+
+              <Button
+                className="w-full"
+                disabled={!canRegister || registering}
+                onClick={register}
+              >
+                {registering
+                  ? 'Inscription...'
+                  : isFull
+                    ? 'Complet'
+                    : !isOpen
+                      ? 'Inscriptions fermées'
+                      : seatCount > 1
+                        ? `S'inscrire (${seatCount} places)`
+                        : "S'inscrire"}
               </Button>
-              <p className="mt-2 text-xs text-slate-500">Votre demande sera traitee par un administrateur.</p>
+              <p className="text-xs text-slate-500">Votre demande sera traitee par un administrateur.</p>
             </aside>
           </div>
         </section>

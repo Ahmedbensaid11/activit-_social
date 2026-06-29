@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/><title>Compte créé</title></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 0;">
+    <tr><td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+            <tr><td style="background:linear-gradient(135deg,#0066cc,#003d7a);padding:40px;text-align:center;">
+                <img th:src="${logoUrl}" alt="Tunisie Telecom" style="height:48px;margin-bottom:16px;" onerror="this.style.display='none'"/>
+                <h1 style="color:#fff;margin:0;font-size:24px;font-weight:700;">Votre compte a été créé</h1>
+            </td></tr>
+            <tr><td style="padding:40px;">
+                <p style="color:#374151;font-size:16px;">Bonjour <strong th:text="${name}"></strong>,</p>
+                <p style="color:#374151;font-size:16px;">Un administrateur vient de créer votre compte sur la plateforme <strong>Activités Sociales – Tunisie Telecom</strong>.</p>
+                <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:20px;margin:24px 0;">
+                    <p style="margin:0 0 8px;color:#0369a1;font-weight:700;font-size:14px;">Vos identifiants de connexion :</p>
+                    <p style="margin:4px 0;color:#374151;font-size:15px;">🔑 Mot de passe temporaire : <strong th:text="${temporaryPassword}" style="font-family:monospace;background:#e0f2fe;padding:2px 8px;border-radius:4px;"></strong></p>
+                    <p style="margin:8px 0 0;color:#6b7280;font-size:13px;">Pensez à modifier votre mot de passe après votre première connexion.</p>
+                </div>
+                <div style="text-align:center;margin:32px 0;">
+                    <a th:href="${loginUrl}" style="background:#0066cc;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;display:inline-block;">Se connecter</a>
+                </div>
+                <p style="color:#9ca3af;font-size:13px;margin:0;">© <span th:text="${year}"></span> Tunisie Telecom. Usage interne uniquement.</p>
+            </td></tr>
+        </table>
+    </td></tr>
+</table>
+</body>
+</html>

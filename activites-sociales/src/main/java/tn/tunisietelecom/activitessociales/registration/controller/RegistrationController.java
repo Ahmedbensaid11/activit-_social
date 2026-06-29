@@ -17,6 +17,8 @@ import tn.tunisietelecom.activitessociales.registration.dto.*;
 import tn.tunisietelecom.activitessociales.registration.entity.Registration;
 import tn.tunisietelecom.activitessociales.registration.service.RegistrationService;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -41,6 +43,15 @@ public class RegistrationController {
             @AuthenticationPrincipal UserDetails userDetails) {
         service.cancelRegistration(id, userDetails.getUsername());
         return ResponseEntity.ok(new MessageResponse("Inscription annulee avec succes."));
+    }
+
+    /**
+     * Real-time available seats endpoint — used by the frontend to show accurate capacity.
+     */
+    @GetMapping("/activities/{id}/seats")
+    @Operation(summary = "Places disponibles en temps reel pour une activite")
+    public ResponseEntity<Map<String, Object>> availableSeats(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getAvailableSeats(id));
     }
 
     @GetMapping("/activities/{id}/registrations")

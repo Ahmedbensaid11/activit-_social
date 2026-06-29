@@ -156,4 +156,12 @@ public class EmailService {
             return new EmailAttachment(filename, new ByteArrayResource(bytes), contentType);
         }
     }
+    @Async
+    public void sendAdminCreatedAccountEmail(String to, String name, String temporaryPassword) {
+        Context context = baseContext();
+        context.setVariable("name", name);
+        context.setVariable("temporaryPassword", temporaryPassword);
+        context.setVariable("loginUrl", frontendUrl + "/login");
+        sendEmail(to, "Votre compte Tunisie Telecom a été créé", "admin-created-account", context);
+    }
 }

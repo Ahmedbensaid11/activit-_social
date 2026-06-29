@@ -1,10 +1,12 @@
 import api from './client'
 
 export const registrationsApi = {
-  register: (activityId, extraData = {}) => api.post(`/activities/${activityId}/register`, { extraData }),
+  register: (activityId, extraData = {}, seatCount = 1) =>
+    api.post(`/activities/${activityId}/register`, { extraData, seatCount }),
   cancel: (activityId) => api.delete(`/activities/${activityId}/register`),
   mine: (params = {}) => api.get('/activities/registrations/me', { params }),
   forActivity: (activityId, params = {}) => api.get(`/activities/${activityId}/registrations`, { params }),
+  availableSeats: (activityId) => api.get(`/activities/${activityId}/seats`),
   adminList: (params = {}) => api.get('/admin/registrations', { params }),
   approve: (id) => api.patch(`/admin/registrations/${id}/approve`),
   reject: (id, motifRejet) => api.patch(`/admin/registrations/${id}/reject`, { motifRejet }),
