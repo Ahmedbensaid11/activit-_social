@@ -75,8 +75,14 @@ export default function Layout() {
     { labelKey: 'qr_scanner',            path: '/admin/qr-scanner',      Icon: QrCode,      group: 'Outils' },
     { labelKey: 'reports',               path: '/admin/reports',         Icon: FileText,    group: 'Administration' },
     { labelKey: 'audit_log',             path: '/admin/audit',           Icon: ShieldAlert, group: 'Administration' },
-     { labelKey: 'manage_roles', path: '/admin/roles', Icon: ShieldCheck, group: 'Administration' },
+     { labelKey: 'manage_roles', path: '/admin/roles', Icon: ShieldCheck, group: 'Administration' },{
+  labelKey: 'manage_users',
+  path: '/admin/users',
+  Icon: Users,
+  group: 'Administration'
+},
   ]
+
 
   const fullName = `${prenom || ''} ${nom || ''}`.trim()
   const initials = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase() || '?'
