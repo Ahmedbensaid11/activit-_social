@@ -8,7 +8,7 @@ import {
   QrCode, Keyboard, Play
 } from 'lucide-react'
 import { registrationsApi } from '../api/registrations'
-import { authStore } from '../stores/authStore'
+import { authStore, hasPermission } from '../stores/authStore'
 
 const SCAN_IDLE = 'idle'
 const SCAN_ACTIVE = 'active'
@@ -34,7 +34,8 @@ export default function QrScannerAdmin() {
   const [cameraError, setCameraError] = useState(null)
   const [history, setHistory] = useState([])
 
-  const canManage = user?.role === 'ADMIN'
+  // Allow ADMIN role OR anyone with VALIDATE_QR permission
+  const canAccess = hasPermission(user, 'VALIDATE_QR')
 
   const stopScanner = useCallback(() => {
     if (controlsRef.current) {
@@ -63,7 +64,6 @@ export default function QrScannerAdmin() {
       setResult({ ok: true, registration: reg })
       setScanState(SCAN_SUCCESS)
       toast.success(t('qr_success'))
-      // Add to session scan history
       setHistory(prev => [{
         id: Date.now(),
         name: reg.userFullName,
@@ -120,13 +120,17 @@ export default function QrScannerAdmin() {
     setScanState(SCAN_IDLE)
   }
 
-  if (!canManage) {
+  // Access denied — shown for any user without the permission
+  if (!canAccess) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="bg-white rounded-3xl border border-slate-100 p-10 text-center shadow-sm max-w-sm">
           <ShieldCheck className="mx-auto mb-4 w-12 h-12 text-slate-300" />
           <h1 className="text-xl font-bold text-slate-800">Accès refusé</h1>
-          <p className="text-sm text-slate-400 mt-2">Cette page est réservée aux administrateurs.</p>
+          <p className="text-sm text-slate-400 mt-2">
+            Vous n'avez pas la permission de valider les QR Codes.<br />
+            Contactez votre administrateur.
+          </p>
         </div>
       </div>
     )
@@ -177,7 +181,6 @@ export default function QrScannerAdmin() {
           <div className="relative aspect-video bg-slate-950 w-full">
             <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
 
-            {/* Sweep screen frame */}
             {isActive && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div className="absolute inset-0 bg-black/40" />
@@ -196,7 +199,6 @@ export default function QrScannerAdmin() {
               </div>
             )}
 
-            {/* Overlay Status cards */}
             {scanState === SCAN_IDLE && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50 text-white">
                 <Camera className="w-10 h-10 text-slate-300" />
@@ -221,30 +223,22 @@ export default function QrScannerAdmin() {
             <p className="px-6 pt-3 text-xs text-red-500 font-semibold">{cameraError}</p>
           )}
 
-          {/* Action triggers */}
           <div className="flex gap-3 px-6 py-4 border-t border-slate-50">
             {isActive ? (
-              <button
-                onClick={stopScanner}
-                className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold py-2.5 rounded-xl transition-all"
-              >
-                <Square className="w-4 h-4" />
-                {t('qr_stop')}
+              <button onClick={stopScanner}
+                className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold py-2.5 rounded-xl transition-all">
+                <Square className="w-4 h-4" /> {t('qr_stop')}
               </button>
             ) : (
-              <button
-                onClick={startScanner} disabled={validating}
-                className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 rounded-xl transition-all shadow-sm shadow-blue-500/10"
-              >
+              <button onClick={startScanner} disabled={validating}
+                className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 rounded-xl transition-all shadow-sm shadow-blue-500/10">
                 <Play className="w-4 h-4" />
                 {scanState === SCAN_IDLE ? t('qr_start') : t('common_retry')}
               </button>
             )}
             {(scanState === SCAN_SUCCESS || scanState === SCAN_ERROR) && (
-              <button
-                onClick={reset}
-                className="flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold px-4 py-2.5 rounded-xl transition-all"
-              >
+              <button onClick={reset}
+                className="flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold px-4 py-2.5 rounded-xl transition-all">
                 <RefreshCw className="w-4 h-4" />
               </button>
             )}
@@ -253,7 +247,6 @@ export default function QrScannerAdmin() {
 
         {/* Right Details Panel */}
         <div className="space-y-4">
-          {/* Result view */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('qr_history_status')}</h3>
 
@@ -265,10 +258,8 @@ export default function QrScannerAdmin() {
             ) : result.ok && result.registration ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-2.5 bg-emerald-50 text-emerald-800 px-3.5 py-2.5 rounded-xl border border-emerald-100 text-xs font-bold">
-                  <CheckCircle2 className="w-4 h-4" />
-                  {t('qr_success')}
+                  <CheckCircle2 className="w-4 h-4" /> {t('qr_success')}
                 </div>
-
                 <div className="space-y-3 text-xs text-slate-600">
                   <div className="flex gap-2">
                     <User className="w-4 h-4 text-blue-500 shrink-0" />
@@ -303,19 +294,17 @@ export default function QrScannerAdmin() {
             )}
           </div>
 
-          {/* Manual Input Fallback */}
+          {/* Manual Input */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <button
               onClick={() => setShowManual(v => !v)}
               className="flex w-full items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
             >
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                <Keyboard className="w-4 h-4" />
-                {t('qr_manual')}
+                <Keyboard className="w-4 h-4" /> {t('qr_manual')}
               </span>
               {showManual ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
             </button>
-
             {showManual && (
               <div className="px-5 pb-5 pt-1 space-y-3">
                 <textarea

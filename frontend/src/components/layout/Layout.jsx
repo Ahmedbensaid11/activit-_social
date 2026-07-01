@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { authStore } from '../../stores/authStore'
+import { authStore, hasPermission, hasAnyPermission } from '../../stores/authStore'
 import { themeStore } from '../../stores/themeStore'
 import NotificationBell from '../ui/NotificationBell'
 import {
@@ -10,7 +10,7 @@ import {
   Compass, CalendarRange, Sun, Moon, UserCircle, ChevronRight
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
-import logoTT from '../../assets/tt.png' 
+import logoTT from '../../assets/tt.png'
 import { ShieldCheck } from 'lucide-react'
 
 export default function Layout() {
@@ -18,29 +18,23 @@ export default function Layout() {
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
 
-  // Auth store — individual primitive selectors (no infinite loop)
-  const logout = authStore((state) => state.logout)
-  const nom    = authStore((state) => state.user?.nom)
-  const prenom = authStore((state) => state.user?.prenom)
-  const email  = authStore((state) => state.user?.email)
-  const role   = authStore((state) => state.user?.role)
-  const photoUrl = authStore((state) => state.user?.photoUrl)
+  const logout    = authStore((state) => state.logout)
+  const nom       = authStore((state) => state.user?.nom)
+  const prenom    = authStore((state) => state.user?.prenom)
+  const email     = authStore((state) => state.user?.email)
+  const role      = authStore((state) => state.user?.role)
+  const photoUrl  = authStore((state) => state.user?.photoUrl)
+  const user      = authStore((state) => state.user)
 
-  // Theme store
   const theme       = themeStore((state) => state.theme)
   const toggleTheme = themeStore((state) => state.toggleTheme)
 
-  // Apply dark class to <html> whenever theme changes
   useEffect(() => {
     const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
+    if (theme === 'dark') root.classList.add('dark')
+    else root.classList.remove('dark')
   }, [theme])
 
-  // Apply RTL direction for Arabic
   useEffect(() => {
     document.documentElement.setAttribute('dir', i18n.language === 'ar' ? 'rtl' : 'ltr')
     document.documentElement.setAttribute('lang', i18n.language)
@@ -52,37 +46,39 @@ export default function Layout() {
     navigate('/login')
   }
 
-  const switchLanguage = (lang) => {
-    i18n.changeLanguage(lang)
-  }
+  const switchLanguage = (lang) => i18n.changeLanguage(lang)
 
   const isAdmin = role === 'ADMIN'
   const currentPath = location.pathname
 
+  // ── Permission-aware admin menu ──────────────────────────────────────────
+  // Each item declares which permission code unlocks it for non-admins.
+  // ADMIN sees all items regardless. Non-admin sees items where they have
+  // the required permission (or no permission required = employee-only items).
+  const adminMenuDef = [
+    { labelKey: 'dashboard',            path: '/admin/dashboard',      Icon: Activity,      group: 'Vue Générale', perm: 'VIEW_DASHBOARD' },
+    { labelKey: 'manage_activities',    path: '/admin/activities',     Icon: CalendarRange,  group: 'Gestion',      perm: 'MANAGE_ACTIVITIES' },
+    { labelKey: 'manage_registrations', path: '/admin/registrations',  Icon: Users,          group: 'Gestion',      perm: 'VIEW_REGISTRATIONS' },
+    { labelKey: 'manage_tickets',       path: '/admin/tickets',        Icon: CreditCard,     group: 'Gestion',      perm: 'VIEW_TICKETS' },
+    { labelKey: 'activity_types',       path: '/admin/activity-types', Icon: ClipboardList,  group: 'Gestion',      perm: 'MANAGE_ACTIVITY_TYPES' },
+    { labelKey: 'qr_scanner',           path: '/admin/qr-scanner',     Icon: QrCode,         group: 'Outils',       perm: 'VALIDATE_QR' },
+    { labelKey: 'reports',              path: '/admin/reports',        Icon: FileText,       group: 'Administration', perm: 'VIEW_REPORTS' },
+    { labelKey: 'audit_log',            path: '/admin/audit',          Icon: ShieldAlert,    group: 'Administration', perm: 'VIEW_AUDIT_LOGS' },
+    { labelKey: 'manage_roles',         path: '/admin/roles',          Icon: ShieldCheck,    group: 'Administration', perm: 'MANAGE_ROLES' },
+    { labelKey: 'manage_users',         path: '/admin/users',          Icon: Users,          group: 'Administration', perm: 'MANAGE_USERS' },
+  ]
+
+  // Filter: admin sees all; personnel only sees items where they have the perm
+  const visibleAdminMenu = isAdmin
+    ? adminMenuDef
+    : adminMenuDef.filter(item => hasPermission(user, item.perm))
+
   const employeeMenu = [
-    { labelKey: 'catalogue',         path: '/activities',          Icon: Compass },
-    { labelKey: 'my_registrations',  path: '/my-registrations',    Icon: CalendarRange },
-    { labelKey: 'submit_ticket',     path: '/tickets/submit',      Icon: CreditCard },
-    { labelKey: 'my_tickets',        path: '/tickets/my-tickets',  Icon: ClipboardList },
+    { labelKey: 'catalogue',        path: '/activities',         Icon: Compass },
+    { labelKey: 'my_registrations', path: '/my-registrations',   Icon: CalendarRange },
+    { labelKey: 'submit_ticket',    path: '/tickets/submit',     Icon: CreditCard },
+    { labelKey: 'my_tickets',       path: '/tickets/my-tickets', Icon: ClipboardList },
   ]
-
-  const adminMenu = [
-    { labelKey: 'dashboard',             path: '/admin/dashboard',       Icon: Activity,    group: 'Vue Générale' },
-    { labelKey: 'manage_activities',     path: '/admin/activities',      Icon: CalendarRange, group: 'Gestion' },
-    { labelKey: 'manage_registrations',  path: '/admin/registrations',   Icon: Users,       group: 'Gestion' },
-    { labelKey: 'manage_tickets',        path: '/admin/tickets',         Icon: CreditCard,  group: 'Gestion' },
-    { labelKey: 'activity_types',        path: '/admin/activity-types',  Icon: ClipboardList, group: 'Gestion' },
-    { labelKey: 'qr_scanner',            path: '/admin/qr-scanner',      Icon: QrCode,      group: 'Outils' },
-    { labelKey: 'reports',               path: '/admin/reports',         Icon: FileText,    group: 'Administration' },
-    { labelKey: 'audit_log',             path: '/admin/audit',           Icon: ShieldAlert, group: 'Administration' },
-     { labelKey: 'manage_roles', path: '/admin/roles', Icon: ShieldCheck, group: 'Administration' },{
-  labelKey: 'manage_users',
-  path: '/admin/users',
-  Icon: Users,
-  group: 'Administration'
-},
-  ]
-
 
   const fullName = `${prenom || ''} ${nom || ''}`.trim()
   const initials = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase() || '?'
@@ -109,8 +105,11 @@ export default function Layout() {
     )
   }
 
-  // Group admin items
   const adminGroups = ['Vue Générale', 'Gestion', 'Outils', 'Administration']
+
+  // Does the user have ANY admin-level permission? Used to decide whether to
+  // show the "admin" section at all for a non-admin with custom roles.
+  const hasAnyAdminPerm = isAdmin || visibleAdminMenu.length > 0
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900 font-sans transition-colors duration-200">
@@ -121,8 +120,8 @@ export default function Layout() {
         {/* Brand Header */}
         <div className="h-16 border-b border-slate-100 dark:border-slate-700 flex items-center px-6 gap-3 bg-gradient-to-r from-blue-900 to-indigo-950 text-white shrink-0">
           <div className="bg-white p-2 w-12 h-12 rounded-full flex items-center justify-center shadow-md">
-                        <img src={logoTT} alt="Tunisie Telecom" className="w-8 h-8 object-contain" />
-                      </div>
+            <img src={logoTT} alt="Tunisie Telecom" className="w-8 h-8 object-contain" />
+          </div>
           <div>
             <p className="font-bold text-sm leading-tight tracking-wide">Tunisie Telecom</p>
             <p className="text-[10px] text-blue-300 font-semibold tracking-wider uppercase">Social Portal</p>
@@ -160,12 +159,12 @@ export default function Layout() {
             ${isActive('/profile') ? 'text-blue-500' : 'text-slate-300 dark:text-slate-600 group-hover:text-slate-400 group-hover:translate-x-0.5'}`} />
         </Link>
 
-        {/* Navigation — scrollable */}
+        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-5">
 
-          {/* Admin Menu */}
-          {isAdmin && adminGroups.map(group => {
-            const items = adminMenu.filter(i => i.group === group)
+          {/* Admin / Permission-gated menu */}
+          {hasAnyAdminPerm && adminGroups.map(group => {
+            const items = visibleAdminMenu.filter(i => i.group === group)
             if (!items.length) return null
             return (
               <div key={group}>
@@ -179,30 +178,26 @@ export default function Layout() {
             )
           })}
 
-          {/* Admin: Employee section */}
-          {isAdmin && (
-            <div>
-              <div className="border-t border-slate-100 dark:border-slate-700 mb-4" />
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3 mb-2">
-                {t('nav_employee')}
-              </p>
-              <div className="space-y-0.5">
-                {employeeMenu.map((item) => <NavLink key={item.path} item={item} accentColor="emerald" />)}
-              </div>
-            </div>
+          {/* Divider between admin tools and employee section */}
+          {hasAnyAdminPerm && (
+            <div className="border-t border-slate-100 dark:border-slate-700" />
           )}
 
-          {/* Employee-only Menu */}
-          {!isAdmin && (
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3 mb-2">
-                {t('nav_menu')}
-              </p>
-              <div className="space-y-0.5">
-                {employeeMenu.map((item) => <NavLink key={item.path} item={item} />)}
-              </div>
+          {/* Employee section — always visible */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3 mb-2">
+              {t('nav_employee')}
+            </p>
+            <div className="space-y-0.5">
+              {employeeMenu.map((item) => (
+                <NavLink
+                  key={item.path}
+                  item={item}
+                  accentColor={isAdmin ? 'emerald' : 'blue'}
+                />
+              ))}
             </div>
-          )}
+          </div>
         </nav>
 
         {/* Profile + Logout */}
@@ -246,42 +241,30 @@ export default function Layout() {
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
               <button
                 onClick={() => switchLanguage('fr')}
-                title="Français"
                 className={`text-sm px-2 py-1 rounded-md font-semibold transition-all
                   ${i18n.language === 'fr'
                     ? 'bg-white dark:bg-slate-600 text-blue-700 dark:text-blue-300 shadow-sm'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
-              >
-                FR
-              </button>
+              >FR</button>
               <button
                 onClick={() => switchLanguage('ar')}
-                title="عربي"
                 className={`text-sm px-2 py-1 rounded-md font-semibold transition-all
                   ${i18n.language === 'ar'
                     ? 'bg-white dark:bg-slate-600 text-blue-700 dark:text-blue-300 shadow-sm'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
-              >
-                AR
-              </button>
+              >AR</button>
             </div>
 
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleTheme}
-              title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
               className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-all"
             >
-              {theme === 'dark'
-                ? <Sun className="w-4 h-4" />
-                : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
             <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
-
-            {/* Notification Bell */}
             <NotificationBell />
-
             <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
 
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400 hidden sm:block">

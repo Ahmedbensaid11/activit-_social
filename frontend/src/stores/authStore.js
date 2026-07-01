@@ -17,17 +17,17 @@ export const authStore = create(
         user,
         isAuthenticated: Boolean(accessToken),
       }),
-      setTokens: (accessToken, refreshToken) => set({ 
-        accessToken, 
+      setTokens: (accessToken, refreshToken) => set({
+        accessToken,
         refreshToken,
-        isAuthenticated: true 
+        isAuthenticated: true
       }),
       setLoading: (loading) => set({ loading }),
-      logout: () => set({ 
-        user: null, 
-        accessToken: null, 
+      logout: () => set({
+        user: null,
+        accessToken: null,
         refreshToken: null,
-        isAuthenticated: false 
+        isAuthenticated: false
       }),
     }),
     {
@@ -35,3 +35,23 @@ export const authStore = create(
     }
   )
 )
+
+// ── Permission helpers ────────────────────────────────────────────────────
+
+/**
+ * Returns true if the current user is ADMIN OR has the given permission code
+ * among their custom roles.
+ */
+export function hasPermission(user, permissionCode) {
+  if (!user) return false
+  if (user.role === 'ADMIN') return true
+  const perms = user.allPermissions || []
+  return perms.includes(permissionCode)
+}
+
+/**
+ * Returns true if the current user has ANY of the given permission codes.
+ */
+export function hasAnyPermission(user, ...codes) {
+  return codes.some(code => hasPermission(user, code))
+}

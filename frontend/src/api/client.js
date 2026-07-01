@@ -6,6 +6,10 @@ const api = axios.create({
   timeout: 30000,
 })
 
+/**
+ * Build a minimal user object from an auth response.
+ * allPermissions will be populated separately via fetchAndAttachPermissions.
+ */
 const buildUserFromAuthResponse = (data) => ({
   id: data.id,
   matricule: data.matricule,
@@ -15,7 +19,33 @@ const buildUserFromAuthResponse = (data) => ({
   telephone: data.telephone,
   role: data.role,
   photoUrl: data.photoUrl,
+  allPermissions: data.allPermissions || [],
 })
+
+/**
+ * After login/refresh, fetch the user's custom-role permissions from
+ * GET /admin/users/:id and merge allPermissions into the stored user.
+ * Only called for PERSONNEL accounts (ADMIN already has full access).
+ */
+async function fetchAndAttachPermissions(userId, token) {
+  if (!userId || !token) return
+  try {
+    const res = await axios.get(
+      `${import.meta.env.VITE_API_URL || '/api'}/admin/users/${userId}`,
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 }
+    )
+    const data = res.data
+    const perms = data.allPermissions || []
+    const customRoles = data.customRoles || []
+    authStore.setState(state => ({
+      user: state.user
+        ? { ...state.user, allPermissions: perms, customRoles }
+        : state.user,
+    }))
+  } catch {
+    // non-admin users can't hit /admin/users — that's fine, permissions stay []
+  }
+}
 
 let refreshRequest = null
 
@@ -56,11 +86,17 @@ api.interceptors.response.use(
         }
 
         const { data } = await refreshRequest
+        const user = buildUserFromAuthResponse(data)
         setSession({
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
-          user: buildUserFromAuthResponse(data),
+          user,
         })
+
+        // Re-fetch permissions after token refresh
+        if (user.role !== 'ADMIN') {
+          fetchAndAttachPermissions(user.id, data.accessToken)
+        }
 
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
         return api(originalRequest)
@@ -75,5 +111,5 @@ api.interceptors.response.use(
   }
 )
 
-export { buildUserFromAuthResponse }
+export { buildUserFromAuthResponse, fetchAndAttachPermissions }
 export default api
